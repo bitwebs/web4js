@@ -1,25 +1,25 @@
-const HyperspaceClient = require('@hyperspace/client')
+const BitspaceClient = require('bitspace-client')
 const { connect } = require('webnet')
 const SDK = require('./sdk')
 
 const isBrowser = process.title === 'browser'
 
 module.exports = async function createSDK (opts) {
-  return SDK({ ...opts, backend: hyperspaceBackend })
+  return SDK({ ...opts, backend: bitspaceBackend })
 }
-module.exports.createBackend = hyperspaceBackend
+module.exports.createBackend = bitspaceBackend
 
-async function hyperspaceBackend (opts) {
+async function bitspaceBackend (opts) {
   let {
-    corestore,
-    hyperspaceOpts = {}
+    chainstore,
+    bitspaceOpts = {}
   } = opts
 
-  let hyperspaceClient
-  if (!corestore) {
-    let { client, protocol, port, host } = hyperspaceOpts
+  let bitspaceClient
+  if (!chainstore) {
+    let { client, protocol, port, host } = bitspaceOpts
     if (client) {
-      hyperspaceClient = client
+      bitspaceClient = client
     } else {
       if (!protocol) {
         protocol = isBrowser ? 'ws' : 'uds'
@@ -31,18 +31,18 @@ async function hyperspaceBackend (opts) {
       } else if (protocol === 'uds') {
         clientOpts = { host, port }
       }
-      hyperspaceClient = new HyperspaceClient(clientOpts)
+      bitspaceClient = new BitspaceClient(clientOpts)
     }
-    await hyperspaceClient.ready()
-    corestore = hyperspaceClient.corestore()
+    await bitspaceClient.ready()
+    chainstore = bitspaceClient.chainstore()
   }
 
-  await hyperspaceClient.network.ready()
-  const swarm = hyperspaceClient.network
-  const keyPair = hyperspaceClient.network.keyPair
+  await bitspaceClient.network.ready()
+  const swarm = bitspaceClient.network
+  const keyPair = bitspaceClient.network.keyPair
 
   return {
-    corestore,
+    chainstore,
     swarm,
     keyPair,
     deriveSecret,
@@ -54,6 +54,6 @@ async function hyperspaceBackend (opts) {
   }
 
   function close (cb) {
-    corestore.close(cb)
+    chainstore.close(cb)
   }
 }

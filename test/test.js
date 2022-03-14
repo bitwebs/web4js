@@ -1,6 +1,6 @@
 const test = require('tape')
 const createNative = require('./lib/native')
-const createHyperspace = require('./lib/hyperspace')
+const createBitspace = require('./lib/bitspace')
 const createMixed = require('./lib/mixed')
 
 let cleanups = []
@@ -24,7 +24,7 @@ function runOnFirstCall (init) {
 
 test.onFinish(cleanupTests)
 run(createNative, 'native')
-run(createHyperspace, 'hyperspace')
+run(createBitspace, 'bitspace')
 run(createMixed, 'mixed')
 
 function run (createTestSDKs, name) {
@@ -32,8 +32,8 @@ function run (createTestSDKs, name) {
     await cleanupTests()
     console.log(`# [test/${name}] init start`)
     const { sdks, cleanup } = await createTestSDKs(2)
-    const { Hyperdrive, Hypercore, resolveName, close } = sdks[0]
-    const { Hyperdrive: Hyperdrive2, Hypercore: Hypercore2, close: close2 } = sdks[1]
+    const { Bitdrive, Unichain, resolveName, close } = sdks[0]
+    const { Bitdrive: Bitdrive2, Unichain: Unichain2, close: close2 } = sdks[1]
     cleanups.push(async () => {
       await Promise.all([
         close(),
@@ -43,50 +43,50 @@ function run (createTestSDKs, name) {
     })
     console.log(`# [test/${name}] init end`)
     return {
-      Hyperdrive,
-      Hypercore,
+      Bitdrive,
+      Unichain,
       resolveName,
-      Hyperdrive2,
-      Hypercore2
+      Bitdrive2,
+      Unichain2
     }
   })
 
   const TEST_TIMEOUT = 60 * 1000 * 2
 
-  const EXAMPLE_DNS_URL = 'dat://dat.foundation'
+  const EXAMPLE_DNS_URL = 'bit://social.x'
   const EXAMPLE_DNS_RESOLUTION = '60c525b5589a5099aa3610a8ee550dcd454c3e118f7ac93b7d41b6b850272330'
 
-  test(name + ': Hyperdrive - create drive', async t => {
+  test(name + ': Bitdrive - create drive', async t => {
     t.timeoutAfter(TEST_TIMEOUT)
-    const { Hyperdrive } = await init()
+    const { Bitdrive } = await init()
 
-    const drive = Hyperdrive('Example drive 1')
+    const drive = Bitdrive('Example drive 1')
 
     await drive.writeFile('/example.txt', 'Hello World!')
-    t.pass('Able to write to hyperdrive')
+    t.pass('Able to write to bitdrive')
   })
 
-  test(name + ': Hyperdrive - get existing drive', async t => {
-    const { Hyperdrive } = await init()
+  test(name + ': Bitdrive - get existing drive', async t => {
+    const { Bitdrive } = await init()
 
-    const drive = Hyperdrive('Example drive 2')
+    const drive = Bitdrive('Example drive 2')
     await drive.ready()
 
-    const existing = Hyperdrive(drive.key)
+    const existing = Bitdrive(drive.key)
 
     t.equal(existing, drive, 'Got existing drive by reference')
   })
 
-  test(name + ': Hyperdrive - load drive over network', async t => {
+  test(name + ': Bitdrive - load drive over network', async t => {
     t.timeoutAfter(TEST_TIMEOUT)
 
     const EXAMPLE_DATA = 'Hello World!'
 
-    const { Hyperdrive2, Hyperdrive } = await init()
+    const { Bitdrive2, Bitdrive } = await init()
 
-    const drive1 = Hyperdrive2('Example drive 3')
+    const drive1 = Bitdrive2('Example drive 3')
     await drive1.writeFile('/index.html', EXAMPLE_DATA)
-    const drive = Hyperdrive(drive1.key)
+    const drive = Bitdrive(drive1.key)
     t.deepEqual(drive1.key, drive.key, 'loaded correct drive')
     await new Promise(resolve => drive.once('peer-open', resolve))
     t.pass('Got peer for drive')
@@ -96,14 +96,14 @@ function run (createTestSDKs, name) {
     )
   })
 
-  test(name + ': Hyperdrive - new drive created after close', async t => {
-    const { Hyperdrive } = await init()
-    const drive = Hyperdrive('Example drive 5')
+  test(name + ': Bitdrive - new drive created after close', async t => {
+    const { Bitdrive } = await init()
+    const drive = Bitdrive('Example drive 5')
 
     await drive.ready()
     await drive.close()
 
-    const existing = Hyperdrive(drive.key)
+    const existing = Bitdrive(drive.key)
 
     t.notOk(existing === drive, 'Got new drive by reference')
   })
@@ -118,53 +118,53 @@ function run (createTestSDKs, name) {
     )
   })
 
-  test(name + ': Hypercore - create', async t => {
+  test(name + ': Unichain - create', async t => {
     t.timeoutAfter(TEST_TIMEOUT)
 
-    const { Hypercore } = await init()
-    const core = Hypercore('Example hypercore 1')
-    await core.append('Hello World')
+    const { Unichain } = await init()
+    const chain = Unichain('Example unichain 1')
+    await chain.append('Hello World')
   })
 
-  test(name + ': Hypercore - load from network', async t => {
+  test(name + ': Unichain - load from network', async t => {
     t.timeoutAfter(TEST_TIMEOUT)
     t.plan(2)
 
-    const { Hypercore, Hypercore2 } = await init()
+    const { Unichain, Unichain2 } = await init()
 
-    const core1 = Hypercore('Example hypercore 2')
-    await core1.append('Hello World')
-    const core2 = Hypercore2(core1.key)
-    await core2.ready()
-    t.deepEqual(core2.key, core1.key, 'loaded key correctly')
-    await new Promise(resolve => core2.once('peer-open', resolve))
+    const chain1 = Unichain('Example unichain 2')
+    await chain1.append('Hello World')
+    const chain2 = Unichain2(chain1.key)
+    await chain2.ready()
+    t.deepEqual(chain2.key, chain1.key, 'loaded key correctly')
+    await new Promise(resolve => chain2.once('peer-open', resolve))
     t.ok(
-      await core2.get(0),
-      'got data from replicated core'
+      await chain2.get(0),
+      'got data from replicated chain'
     )
   })
 
-  test(name + ': Hypercore - only close when all handles are closed', async t => {
+  test(name + ': Unichain - only close when all handles are closed', async t => {
     t.timeoutAfter(TEST_TIMEOUT)
     t.plan(5)
 
-    const { Hypercore } = await init()
+    const { Unichain } = await init()
 
-    const core1 = Hypercore('Example hypercore 4')
-    const core2 = Hypercore('Example hypercore 4')
+    const chain1 = Unichain('Example unichain 4')
+    const chain2 = Unichain('Example unichain 4')
 
-    core1.once('close', () => t.pass('close event emitted once'))
+    chain1.once('close', () => t.pass('close event emitted once'))
 
-    t.ok(core1 === core2, 'Second handle is same instance')
+    t.ok(chain1 === chain2, 'Second handle is same instance')
 
-    await core1.append('Hello World')
-    await core1.close()
-    t.pass('First core closed')
+    await chain1.append('Hello World')
+    await chain1.close()
+    t.pass('First chain closed')
     t.ok(
-      await core1.get(0),
+      await chain1.get(0),
       'Still able to read after close'
     )
-    await core2.close()
-    t.pass('Second core closed')
+    await chain2.close()
+    t.pass('Second chain closed')
   })
 }

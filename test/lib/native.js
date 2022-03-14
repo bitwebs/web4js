@@ -34,14 +34,14 @@ async function getNewStorage () {
   } else {
     const tmp = require('tmp-promise')
     const dir = await tmp.dir({
-      prefix: 'dat-sdk-tests-'
+      prefix: 'web4js-tests-'
     })
     return dir.path
   }
 }
 
 async function createDHT () {
-  const bootstrapper = require('@hyperswarm/dht')({
+  const bootstrapper = require('@web4/dht')({
     bootstrap: false
   })
   const closed = new Promise(resolve => bootstrapper.once('closed', resolve))

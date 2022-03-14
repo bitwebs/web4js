@@ -1,10 +1,10 @@
 // TODO: Figure out Hyperspace options
-declare module "hyper-sdk" {
+declare module "web4js" {
   // TODO: Support abstract-encoding
   export type Encoding = 'binary' | 'json' | 'utf-8'
 
-  // TODO: Might want to spec out Corestore?
-  export type Corestore = any
+  // TODO: Might want to spec out Chainstore?
+  export type Chainstore = any
 
   // TODO: Maybe we should Type random-access-storage?
   export type Storage = any
@@ -13,22 +13,22 @@ declare module "hyper-sdk" {
     applicationName?: string;
     persist?: boolean;
     storage?: Storage
-    corestore?: Corestore;
-    corestoreOpts?: CorestoreOpts;
-    coreOpts?: HypercoreOptions;
-    driveOpts?: HyperdriveOptions;
+    chainstore?: Chainstore;
+    chainstoreOpts?: ChainstoreOpts;
+    chainOpts?: UnichainOptions;
+    driveOpts?: BitdriveOptions;
     dnsOpts?: DNSOptions;
-    swarmOpts?: HyperswarmOptions | HyperswarmWebOptions
+    swarmOpts?: BitswarmOptions | BitswarmWebOptions
   }
 
-  export interface HyperswarmOptions {
+  export interface BitswarmOptions {
     maxPeers?: number
     ephemeral?: boolean
     bootstrap?: string[]
     preferredPort?: number
   }
 
-  export interface HyperswarmWebOptions {
+  export interface BitswarmWebOptions {
     maxPeers?: number
     webrtcBootstrap?: string[]
     wsProxy?: string,
@@ -42,17 +42,17 @@ declare module "hyper-sdk" {
     txtRegex?: RegExp
   }
 
-  export interface HypercoreOptions {
+  export interface UnichainOptions {
     sparse? : boolean;
     eagerUpdate?: boolean
     valueEncoding?: Encoding
   }
 
-  export interface HyperdriveOptions {
+  export interface BitdriveOptions {
     sparse?: boolean
   }
 
-  export interface CorestoreOpts {
+  export interface ChainstoreOpts {
     masterKey?: Buffer;
     ack?: boolean
   }
@@ -72,7 +72,7 @@ declare module "hyper-sdk" {
     onerror (error: Error) : void
   }
 
-  export interface HypercoreGetOptions {
+  export interface UnichainGetOptions {
     wait?: boolean
     timeout?: number
     valueEncoding: Encoding
@@ -96,7 +96,7 @@ declare module "hyper-sdk" {
     minLength?: number
   }
 
-  export interface HypercoreReadStreamOpts {
+  export interface UnichainReadStreamOpts {
     start?: number
     end?: number
     snapshot?: boolean
@@ -107,7 +107,7 @@ declare module "hyper-sdk" {
     batch?: number
   }
 
-  export interface HypercoreWriteStreamOpts {
+  export interface UnichainWriteStreamOpts {
     maxBlockSize?: number
   }
 
@@ -134,7 +134,7 @@ declare module "hyper-sdk" {
     bitfield?: Buffer
   }
 
-  export interface Hypercore<E=Buffer> {
+  export interface Unichain<E=Buffer> {
     readonly writable: boolean
     readonly readable: boolean
     readonly key: Buffer
@@ -169,9 +169,9 @@ declare module "hyper-sdk" {
     registerExtension<M=Buffer>(name: string, handlers: ExtensionHandlers<M>) : Extension<M>
 
     append(data: E) : Promise<number>
-    get(index: number, options? : HypercoreGetOptions) : Promise<E>
-    getBatch(start: number, end: number, options?: HypercoreGetOptions) : Promise<E[]>
-    head(options?: HypercoreGetOptions) : Promise<E>
+    get(index: number, options? : UnichainGetOptions) : Promise<E>
+    getBatch(start: number, end: number, options?: UnichainGetOptions) : Promise<E[]>
+    head(options?: UnichainGetOptions) : Promise<E>
     download(range?: DownloadRange): Promise<void>
     signature(index?: number) : Promise<Buffer>
     verify(index: number, signature: Buffer) : Promise<boolean>
@@ -184,8 +184,8 @@ declare module "hyper-sdk" {
     setDownloading(downloading: boolean) : void
     setUploading(uploading: boolean) : void
 
-    createReadStream(options? : HypercoreReadStreamOpts) : NodeJS.ReadableStream
-    createWriteStream(options?: HypercoreWriteStreamOpts) : NodeJS.WritableStream
+    createReadStream(options? : UnichainReadStreamOpts) : NodeJS.ReadableStream
+    createWriteStream(options?: UnichainWriteStreamOpts) : NodeJS.WritableStream
 
     close() : Promise<void>
     destroyStorage(): Promise<void>
@@ -233,7 +233,7 @@ declare module "hyper-sdk" {
   }
 
   export interface MountInfo {
-    feed: Hypercore
+    feed: Unichain
     mountPath: string
     mountInfo: any
   }
@@ -254,15 +254,15 @@ declare module "hyper-sdk" {
 
   export interface MountFeeds {
     path: string
-    metadata: Hypercore
-    content: Hypercore
+    metadata: Unichain
+    content: Unichain
   }
 
   export interface MountMap {
     [path: string]: MountFeeds
   }
 
-  export interface Hyperdrive {
+  export interface Bitdrive {
     readonly version: number;
     readonly key: Buffer;
     readonly discoveryKey: Buffer;
@@ -289,7 +289,7 @@ declare module "hyper-sdk" {
 
     ready() : Promise<void>
 
-    checkout(version: number) : Hyperdrive
+    checkout(version: number) : Bitdrive
     createTag(name: string, version?: number) : Promise<void>
     getTaggedVersion(name: string) : Promise<number>
     deleteTag(name) : Promise<void>
@@ -338,8 +338,8 @@ declare module "hyper-sdk" {
   export interface SDKInstance {
     readonly keyPair: KeyPair
 
-    Hyperdrive(keyOrName: string, opts? : HyperdriveOptions) : Hyperdrive;
-    Hypercore<E=Buffer>(keyOrName: string, opts? : HypercoreOptions) : Hypercore<E>;
+    Bitdrive(keyOrName: string, opts? : BitdriveOptions) : Bitdrive;
+    Unichain<E=Buffer>(keyOrName: string, opts? : UnichainOptions) : Unichain<E>;
 
     resolveName(url: string) : Promise<string>
     deriveSecret(namespace: string, name: string) : Promise<Buffer>

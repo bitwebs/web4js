@@ -3,30 +3,28 @@ const path = require('path')
 // This is a dirty hack for browserify to work. 😅
 if (!path.posix) path.posix = path
 
-const DatEncoding = require('dat-encoding')
-const datDNS = require('dat-dns')
-const hyperdrive = require('hyperdrive')
-const makeHypercorePromise = require('@geut/hypercore-promise')
-const makeHyperdrivePromise = require('@geut/hyperdrive-promise')
+const BitEncoding = require('@web4/encoding')
+const bitDNS = require('@web4/bitweb-dns')
+const bitdrive = require('@web4/bitdrive')
+const makeUnichainPromise = require('@web4/unichain-promise')
+const makeBitdrivePromise = require('@web4/bitdrive-promise')
 
 const DEFAULT_DRIVE_OPTS = {
   sparse: true,
   persist: true
 }
-const DEFAULT_CORE_OPTS = {
+const DEFAULT_CHAIN_OPTS = {
   sparse: true,
   persist: true
 }
 const DEFAULT_DNS_OPTS = {}
-const DEFAULT_APPLICATION_NAME = 'dat-sdk'
+const DEFAULT_APPLICATION_NAME = 'web4js'
 
 const CLOSE_FN = Symbol('close')
 const HANDLE_COUNT = Symbol('closeCount')
 
 module.exports = SDK
 module.exports.DEFAULT_APPLICATION_NAME = DEFAULT_APPLICATION_NAME
-
-// TODO: Set up Promise API based on Beaker https://github.com/beakerbrowser/beaker/blob/blue-hyperdrive10/app/bg/web-apis/fg/hyperdrive.js
 
 async function SDK (opts = {}) {
   if (!opts.backend) throw new Error('No backend was passed in')
@@ -41,29 +39,29 @@ async function SDK (opts = {}) {
   const {
     backend,
     driveOpts,
-    coreOpts,
+    chainOpts,
     dnsOpts
   } = opts
 
-  const dns = datDNS(Object.assign({}, DEFAULT_DNS_OPTS, dnsOpts))
+  const dns = bitDNS(Object.assign({}, DEFAULT_DNS_OPTS, dnsOpts))
 
   const handlers = await backend(opts)
   const {
     storage,
-    corestore,
+    chainstore,
     swarm,
     deriveSecret,
     keyPair
   } = handlers
 
-  await corestore.ready()
+  await chainstore.ready()
 
   const drives = new Map()
-  const cores = new Map()
+  const chains = new Map()
 
   return {
-    Hyperdrive,
-    Hypercore,
+    Bitdrive,
+    Unichain,
     resolveName,
     getIdentity,
     deriveSecret,
@@ -71,13 +69,13 @@ async function SDK (opts = {}) {
     close,
     get keyPair () { return keyPair },
     _storage: storage,
-    _corestore: corestore,
+    _chainstore: chainstore,
     _swarm: swarm,
     _dns: dns
   }
 
   function getIdentity () {
-    console.warn('getIdentity is being deprecated and will be removed in version 3.x.x, please use sdk.keyPair instead')
+    console.warn('getIdentity is being deprecated and will be removed in version 2.x.x, please use sdk.keyPair instead')
     return keyPair
   }
 
@@ -93,7 +91,7 @@ async function SDK (opts = {}) {
     await Promise.all(
       []
         .concat(Array.from(drives.values()).map(drive => drive.close()))
-        .concat(Array.from(cores.values()).map(core => core.close()))
+        .concat(Array.from(chains.values()).map(chain => chain.close()))
     )
     if (handlers.close) {
       await new Promise(
@@ -111,7 +109,7 @@ async function SDK (opts = {}) {
     return swarm.registerExtension(name, handlers)
   }
 
-  function Hyperdrive (nameOrKey, opts) {
+  function Bitdrive (nameOrKey, opts) {
     if (!nameOrKey) throw new Error('Must give a name or key in the constructor')
 
     opts = Object.assign({}, DEFAULT_DRIVE_OPTS, driveOpts, opts)
@@ -126,8 +124,8 @@ async function SDK (opts = {}) {
 
     if (name) opts.namespace = name
 
-    const drive = hyperdrive(corestore, key, opts)
-    const wrappedDrive = makeHyperdrivePromise(drive)
+    const drive = bitdrive(chainstore, key, opts)
+    const wrappedDrive = makeBitdrivePromise(drive)
 
     drive[HANDLE_COUNT] = 0
 
@@ -174,57 +172,57 @@ async function SDK (opts = {}) {
     return wrappedDrive
   }
 
-  function Hypercore (nameOrKey, opts) {
+  function Unichain (nameOrKey, opts) {
     if (!nameOrKey) throw new Error('Must give a name or key in the constructor')
 
-    opts = Object.assign({}, DEFAULT_CORE_OPTS, coreOpts, opts)
+    opts = Object.assign({}, DEFAULT_CHAIN_OPTS, chainOpts, opts)
 
     const { key, name, id } = resolveNameOrKey(nameOrKey)
 
-    if (cores.has(id)) {
-      const existing = cores.get(id)
+    if (chains.has(id)) {
+      const existing = chains.get(id)
       existing[HANDLE_COUNT]++
       return existing
     }
 
-    let core
+    let chain
     if (key) {
-      // If a dat key was provided, get it from the corestore
-      core = corestore.get({ ...opts, key })
+      // If a bitweb key was provided, get it from the chainstore
+      chain = chainstore.get({ ...opts, key })
     } else {
-      // If no dat key was provided, but a name was given, use it as a namespace
-      core = corestore.namespace(name).default(opts)
+      // If no bitweb key was provided, but a name was given, use it as a namespace
+      chain = chainstore.namespace(name).default(opts)
     }
 
     // Wrap with promises
-    const wrappedCore = makeHypercorePromise(core)
+    const wrappedChain = makeUnichainPromise(chain)
 
-    core[HANDLE_COUNT] = 0
+    chain[HANDLE_COUNT] = 0
 
-    core.close = function (cb) {
+    chain.close = function (cb) {
       if (!cb) cb = function noop () {}
-      const hasHandles = wrappedCore[HANDLE_COUNT]--
+      const hasHandles = wrappedChain[HANDLE_COUNT]--
       if (hasHandles === 0) {
         setTimeout(() => {
-          let promise = core._close(cb)
+          let promise = chain._close(cb)
           if (promise && promise.then) promise.then(cb, cb)
         }, 0)
       } else if (cb) setTimeout(cb, 0)
     }
 
-    cores.set(id, wrappedCore)
+    chains.set(id, wrappedChain)
 
     if (!key) {
-      core.ready(() => {
-        const key = core.key
+      chain.ready(() => {
+        const key = chain.key
         const stringKey = key.toString('hex')
-        cores.set(stringKey, wrappedCore)
+        chains.set(stringKey, wrappedChain)
       })
     }
 
-    core.ready(() => {
+    chain.ready(() => {
       const {
-        discoveryKey = core.discoveryKey,
+        discoveryKey = chain.discoveryKey,
         lookup = true,
         announce = true
       } = opts
@@ -234,28 +232,28 @@ async function SDK (opts = {}) {
       swarm.configure(discoveryKey, { announce, lookup })
     })
 
-    core.once('close', () => {
-      const { discoveryKey = core.discoveryKey } = opts
-      const key = core.key
+    chain.once('close', () => {
+      const { discoveryKey = chain.discoveryKey } = opts
+      const key = chain.key
       const stringKey = key.toString('hex')
 
       swarm.configure(discoveryKey, { announce: false, lookup: false })
 
-      cores.delete(stringKey)
-      cores.delete(id)
+      chains.delete(stringKey)
+      chains.delete(id)
     })
 
-    return wrappedCore
+    return wrappedChain
   }
 
   function resolveNameOrKey (nameOrKey) {
     let key, name, id
     try {
-      key = DatEncoding.decode(nameOrKey)
+      key = BitEncoding.decode(nameOrKey)
       id = key.toString('hex')
-      // Normalize keys to be hex strings of the key instead of dat URLs
+      // Normalize keys to be hex strings of the key instead of bit URLs
     } catch (e) {
-      // Probably isn't a `dat://` URL, so it must be a name
+      // Probably isn't a `bit://` URL, so it must be a name
       name = nameOrKey
       id = name
     }

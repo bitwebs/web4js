@@ -1,9 +1,9 @@
 /* global fetch */
 // TODO: Persist to local storage
 
-const DEFAULT_DNS_PROXY = 'gateway.mauve.moe'
+const DEFAULT_DNS_PROXY = 'proxy.bitdht.com'
 const NEWLINE_REGEX = /\r?\n/
-const DAT_PROTOCOL = 'dat://'
+const BIT_PROTOCOL = 'bit://'
 
 module.exports = ({
   dnsProxy = DEFAULT_DNS_PROXY
@@ -20,8 +20,8 @@ module.exports = ({
 
       let domain = url
 
-      if (domain.startsWith(DAT_PROTOCOL)) {
-        domain = url.slice(DAT_PROTOCOL.length)
+      if (domain.startsWith(BIT_PROTOCOL)) {
+        domain = url.slice(BIT_PROTOCOL.length)
       }
 
       if (cache[domain]) {
@@ -34,7 +34,7 @@ module.exports = ({
       }
 
       try {
-        const toFetch = `//${dnsProxy}/${domain}/.well-known/dat`
+        const toFetch = `//${dnsProxy}/${domain}/.well-known/bit`
 
         const response = await fetch(toFetch)
 
@@ -44,7 +44,7 @@ module.exports = ({
 
         const resolved = lines[0]
 
-        const key = resolved.slice(DAT_PROTOCOL.length)
+        const key = resolved.slice(BIT_PROTOCOL.length)
 
         cache[domain] = key
 
